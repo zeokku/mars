@@ -154,6 +154,16 @@ void decrypt_aes256_pcbc(const byte *ciphertext, const size_t ciphertext_size, c
     }
 
     size_t padding_size = plaintext[ciphertext_size - 1];
+
+    // @note sometimes incorrect password may lead to incorrect decryption and thus
+    // extremely big plaintext_size values, when padding_size turns out to be bigger
+    // than ciphertext size (overflow)
+    if (padding_size > BLOCK_SIZE)
+    {
+        printf("Integrity is broken\n");
+        abort();
+    }
+
     plaintext_size = ciphertext_size - padding_size;
 
     EVP_CIPHER_CTX_free(ctx);

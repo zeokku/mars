@@ -11,13 +11,15 @@
 // aes256
 #define KEY_SIZE (256 / 8)
 
+#define SALT_SIZE (128 / 8)
+
 #include <chrono>
 using namespace std::chrono;
 
 #define MB(x) 1024ull * x
 #define GB(x) MB(1024ull) * x
 
-void kdf(byte *password, byte password_size, byte *salt, byte salt_size, byte *&key)
+void kdf(byte *password, byte password_size, byte *salt, byte salt_size, byte *key)
 {
     EVP_KDF *kdf = EVP_KDF_fetch(NULL, "ARGON2D", NULL);
 
@@ -48,7 +50,7 @@ void kdf(byte *password, byte password_size, byte *salt, byte salt_size, byte *&
 
     printf("[KDF] Iterations: %zu, memcost: %zu, lanes: %zu\n", iterations, memcost, lanes);
 
-    key = new byte[KEY_SIZE];
+    // key = new byte[KEY_SIZE];
 
     // @todo error, undefined
     /* required if threads > 1 */

@@ -18,6 +18,8 @@ v2:
 v2 prevents from searching for file prefix signatures, since it starts with a random hash
 
 folder preparation:
+https://unix.stackexchange.com/questions/533463/tar-contents-in-current-directory-to-stdout
+tar will only write stdout to smth
 * `tar -c data` (`tar -x data.tar`)
 * `brotli --best data.tar -o data.tar.br` (`brotli -d`)
 
@@ -35,3 +37,5 @@ https://www.ibm.com/docs/en/zos/2.4.0?topic=rules-pkcs-padding-method
 https://wiki.openssl.org/index.php/EVP_Symmetric_Encryption_and_Decryption
 
 https://www.openssl.org/docs/man3.1/man3/EVP_EncryptUpdate.html
+
+# overwrite files with 0s
