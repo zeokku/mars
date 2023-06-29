@@ -57,6 +57,10 @@ void encrypt(const std::string filename, const std::string password)
 
     hash((byte *)file.data(), file_size, digest);
 
+    // prepend digest to file
+    file = std::string((char *)digest, DIGEST_SIZE) + file;
+    file_size = file.length();
+
     // printf("Digest = %s\n", OPENSSL_buf2hexstr(digest_buffer, DIGEST_SIZE));
 
 #pragma endregion
@@ -98,7 +102,7 @@ void encrypt(const std::string filename, const std::string password)
 
     // << can't be used
     encrypted.write((char *)salt, SALT_SIZE);
-    encrypted.write((char *)digest, DIGEST_SIZE);
+    // encrypted.write((char *)digest, DIGEST_SIZE);
     encrypted.write((char *)iv, IV_SIZE);
     encrypted.write((char *)ciphertext, ciphertext_size);
 
@@ -119,12 +123,11 @@ void decrypt(const std::string filename, const std::string password)
 #pragma region Read data
 
     byte salt[SALT_SIZE];
-    byte digest[DIGEST_SIZE];
     byte iv[IV_SIZE];
 
     std::ifstream encrypted(filename, std::ios::binary);
     encrypted.read((char *)salt, SALT_SIZE);
-    encrypted.read((char *)digest, DIGEST_SIZE);
+    // encrypted.read((char *)digest, DIGEST_SIZE);
     encrypted.read((char *)iv, IV_SIZE);
 
     std::string ciphertext((std::istreambuf_iterator<char>(encrypted)),
@@ -150,6 +153,11 @@ void decrypt(const std::string filename, const std::string password)
     decrypt_aes256_pcbc((byte *)ciphertext.data(), ciphertext_size, key, iv, plaintext, plaintext_size);
 
     OPENSSL_cleanse(key, KEY_SIZE);
+
+    // extract digest
+    byte *digest = plaintext;
+    plaintext += DIGEST_SIZE;
+    plaintext_size -= DIGEST_SIZE;
 
 #pragma endregion
 
