@@ -7,8 +7,10 @@
 // (256 / 8)
 // all aes ciphers have block size 16
 const auto ECB_CIPHER = EVP_aes_256_ecb();
-const auto BLOCKSIZE = EVP_CIPHER_get_block_size(ECB_CIPHER);
-const auto XOR_OP_SIZE = BLOCKSIZE / sizeof(size_t);
+const auto BLOCK_SIZE = EVP_CIPHER_get_block_size(ECB_CIPHER);
+const auto XOR_OP_SIZE = BLOCK_SIZE / sizeof(size_t);
+
+#define IV_SIZE BLOCK_SIZE
 
 // faster xor with size_t?
 // compiler should optimize it to use 128/256 bit operations doe
@@ -37,7 +39,7 @@ void pcbc_encrypt_round(EVP_CIPHER_CTX *ctx, const byte *in, byte *out, byte *op
         out,
         &encrypted_size,
         op,
-        BLOCKSIZE);
+        BLOCK_SIZE);
 
     // prepare next operation = plaintext ^ ciphertext
     xor_block(
@@ -48,19 +50,16 @@ void pcbc_encrypt_round(EVP_CIPHER_CTX *ctx, const byte *in, byte *out, byte *op
     // printf("[PCBC] Encrypted len = %d\n", encrypted_size);
 }
 
-/*
-    Use ECB mode to encrypt and pad the blocks by default with PKCS
-*/
 void encrypt_aes256_pcbc(const byte *plaintext, const size_t plaintext_size, const byte *key, byte *iv, byte *&ciphertext, size_t &ciphertext_size)
 {
     // iv OR ciphertext ^ plaintext
-    byte operation_buffer[BLOCKSIZE];
+    byte operation_buffer[BLOCK_SIZE];
 
     // clear iv to 0
-    // memset(operation_buffer, 0, BLOCKSIZE);
-    memcpy(operation_buffer, iv, BLOCKSIZE);
+    // memset(operation_buffer, 0, BLOCK_SIZE);
+    memcpy(operation_buffer, iv, BLOCK_SIZE);
 
-    size_t padding_size = BLOCKSIZE - plaintext_size % BLOCKSIZE;
+    size_t padding_size = BLOCK_SIZE - plaintext_size % BLOCK_SIZE;
     ciphertext_size = plaintext_size + padding_size;
 
     ciphertext = new byte[ciphertext_size];
@@ -73,7 +72,7 @@ void encrypt_aes256_pcbc(const byte *plaintext, const size_t plaintext_size, con
     EVP_CIPHER_CTX_set_padding(ctx, 0);
 
     // encrypt full blocks
-    for (size_t b = 0; b + BLOCKSIZE <= plaintext_size; b += BLOCKSIZE)
+    for (size_t b = 0; b + BLOCK_SIZE <= plaintext_size; b += BLOCK_SIZE)
     {
         pcbc_encrypt_round(
             ctx,
@@ -88,16 +87,16 @@ void encrypt_aes256_pcbc(const byte *plaintext, const size_t plaintext_size, con
     // use end of ciphertext to store padded plaintext
 
     // temp store for padded final plaintext block
-    byte *last_ciphertext_block = ciphertext + ciphertext_size - BLOCKSIZE;
+    byte *last_ciphertext_block = ciphertext + ciphertext_size - BLOCK_SIZE;
 
     memcpy(
         last_ciphertext_block,
-        plaintext + ciphertext_size - BLOCKSIZE,
-        BLOCKSIZE - padding_size);
+        plaintext + ciphertext_size - BLOCK_SIZE,
+        BLOCK_SIZE - padding_size);
 
     // set padding
     memset(
-        last_ciphertext_block + BLOCKSIZE - padding_size,
+        last_ciphertext_block + BLOCK_SIZE - padding_size,
         padding_size,
         padding_size);
 
@@ -114,7 +113,7 @@ void pcbc_decrypt_round(EVP_CIPHER_CTX *ctx, const byte *in, byte *out, byte *op
 {
     int decrypted_size;
 
-    EVP_DecryptUpdate(ctx, out, &decrypted_size, in, BLOCKSIZE);
+    EVP_DecryptUpdate(ctx, out, &decrypted_size, in, BLOCK_SIZE);
 
     // plaintext = decrypted ^ op (= iv OR prev_ciphertext ^ prev_plaintext)
     xor_block(
@@ -133,9 +132,9 @@ void pcbc_decrypt_round(EVP_CIPHER_CTX *ctx, const byte *in, byte *out, byte *op
 
 void decrypt_aes256_pcbc(const byte *ciphertext, const size_t ciphertext_size, const byte *key, byte *iv, byte *&plaintext, size_t &plaintext_size)
 {
-    byte operation_buffer[BLOCKSIZE];
-    // memset(operation_buffer, 0, BLOCKSIZE);
-    memcpy(operation_buffer, iv, BLOCKSIZE);
+    byte operation_buffer[BLOCK_SIZE];
+    // memset(operation_buffer, 0, BLOCK_SIZE);
+    memcpy(operation_buffer, iv, BLOCK_SIZE);
 
     plaintext = new byte[ciphertext_size];
 
@@ -145,7 +144,7 @@ void decrypt_aes256_pcbc(const byte *ciphertext, const size_t ciphertext_size, c
 
     EVP_CIPHER_CTX_set_padding(ctx, 0);
 
-    for (size_t b = 0; b < ciphertext_size; b += BLOCKSIZE)
+    for (size_t b = 0; b < ciphertext_size; b += BLOCK_SIZE)
     {
         pcbc_decrypt_round(
             ctx,

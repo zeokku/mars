@@ -3,11 +3,11 @@
 
 void test(size_t test_payload_size)
 {
-    byte key[BLOCKSIZE];
-    RAND_bytes(key, BLOCKSIZE);
+    byte key[BLOCK_SIZE];
+    RAND_bytes(key, BLOCK_SIZE);
 
-    byte iv[BLOCKSIZE];
-    RAND_bytes(iv, BLOCKSIZE);
+    byte iv[BLOCK_SIZE];
+    RAND_bytes(iv, BLOCK_SIZE);
 
     byte *test_payload = new byte[test_payload_size];
     RAND_bytes(test_payload, test_payload_size);
@@ -48,15 +48,15 @@ int main()
 {
     // test(1);
 
-    // test(BLOCKSIZE - 1);
+    // test(BLOCK_SIZE - 1);
 
-    // test(BLOCKSIZE);
+    // test(BLOCK_SIZE);
 
-    // test(BLOCKSIZE + 1);
+    // test(BLOCK_SIZE + 1);
 
-    // test(BLOCKSIZE * 5);
+    // test(BLOCK_SIZE * 5);
 
-    // test(BLOCKSIZE * 5 + 2);
+    // test(BLOCK_SIZE * 5 + 2);
 
     // printf("--- Random tests ---\n");
     // for (size_t r = 0; r < 50; r += 1)

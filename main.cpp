@@ -1,140 +1,93 @@
-#include <string.h> /* strlen               */
-
-#include <openssl/core_names.h> /* OSSL_KDF_*           */
-#include <openssl/params.h>     /* OSSL_PARAM_*         */
-#include <openssl/thread.h>     /* OSSL_set_max_threads */
-
-#include <openssl/kdf.h> /* EVP_KDF_*            */
-#include <openssl/evp.h>
+#include <string>
+#include <iostream>
+#include <fstream>
 
 #include <openssl/rand.h>
 
-#include <openssl/err.h>
-
 #include "./types.h"
 
+// @todo configure everything with defines before includes in a config.h
+
+#include "./kdf.hpp"
+#include "./integrity.hpp"
 #include "./pcbc.hpp"
 
-#include <chrono>
-using namespace std::chrono;
-
-#define MB(x) 1024ull * x
-#define GB(x) MB(1024ull) * x
-
-void handle_error()
-{
-    printf("End: %s", ERR_error_string(ERR_get_error(), NULL));
-    abort();
-}
+#define SALT_SIZE (128 / 8)
 
 int main(void)
 {
-    int retval = 1;
 
-    EVP_KDF *kdf = NULL;
-    EVP_KDF_CTX *kctx = NULL;
-    OSSL_PARAM params[6];
+#pragma region File digest
 
-    // https://www.rfc-editor.org/rfc/rfc9106.html#name-parameter-choice
-    uint32_t
-        threads = 1,
-        lanes = 2,
-        iterations = 1; // 4
+    // size_t file_size = 500;
+    // byte *file = new byte[file_size];
+    // RAND_bytes(file, file_size);
 
-    // https://www.openssl.org/docs/manmaster/man7/EVP_KDF-ARGON2.html#:~:text=%22memcost%22%20(-,OSSL_KDF_PARAM_ARGON2_MEMCOST,-)%20%3Cunsigned%20integer%3E
-    // mem cost is 1k blocks
-    // first increase memory to max affordable
-    // then increase number of iterations
-    const uint64_t
-        memcost = GB(1);
-    // 1gb 1466ms
-    // 2gb 2769ms
-    // 3gb 3926ms
-    // 4gb 6242ms
+    byte *file = (byte *)"some test file content";
+    size_t file_size = strlen((char *)file);
 
-    printf("[Config] Iterations: %d, memcost: %ld, lanes: %d\n", iterations, memcost, lanes);
+    byte *digest;
 
-    char pwd[] = "test password with spaces btw", salt[] = "saltsalt";
+    hash(file, file_size, digest);
 
-    size_t outlen = 256;
-    unsigned char result[outlen];
+    // printf("Digest = %s\n", OPENSSL_buf2hexstr(digest_buffer, DIGEST_SIZE));
 
-    // @todo error, undefined
-    /* required if threads > 1 */
-    // if (OSSL_set_max_threads(NULL, threads) != 1)
-    //     handle_error();
+#pragma endregion
 
-    OSSL_PARAM *p = params;
+#pragma region Password input and key derivation
+    printf("Input password:\n");
 
-    *p++ = OSSL_PARAM_construct_uint32(
-        OSSL_KDF_PARAM_THREADS,
-        &threads);
+    std::string password;
+    getline(std::cin, password);
 
-    *p++ = OSSL_PARAM_construct_uint32(
-        OSSL_KDF_PARAM_ARGON2_LANES,
-        &lanes);
+    system("clear");
 
-    *p++ = OSSL_PARAM_construct_uint32(
-        OSSL_KDF_PARAM_ITER,
-        &iterations);
+    byte salt[SALT_SIZE];
+    RAND_bytes(salt, SALT_SIZE);
 
-    *p++ = OSSL_PARAM_construct_uint64(
-        OSSL_KDF_PARAM_ARGON2_MEMCOST,
-        (uint64_t *)&memcost);
+    // printf("Password (%zu) = %s\n", password.length(), password.c_str());
+    // printf("Salt = %s\n", OPENSSL_buf2hexstr(salt, SALT_SIZE));
 
-    *p++ = OSSL_PARAM_construct_octet_string(
-        OSSL_KDF_PARAM_SALT,
-        salt,
-        strlen((const char *)salt));
+    byte *key;
 
-    *p++ = OSSL_PARAM_construct_octet_string(
-        OSSL_KDF_PARAM_PASSWORD,
-        pwd,
-        strlen((const char *)pwd));
+    kdf((byte *)password.c_str(), password.length(), salt, SALT_SIZE, key);
 
-    *p++ = OSSL_PARAM_construct_end();
+    // printf("Key = %s\n", OPENSSL_buf2hexstr(key, KEY_SIZE));
 
-    if ((kdf = EVP_KDF_fetch(NULL, "ARGON2D", NULL)) == NULL)
-        handle_error();
+#pragma endregion
 
-    if ((kctx = EVP_KDF_CTX_new(kdf)) == NULL)
-        handle_error();
+#pragma region File encryption
 
-    auto start = high_resolution_clock::now();
-
-    if (EVP_KDF_derive(kctx, &result[0], outlen, params) != 1)
-        handle_error();
-
-    printf("Duration = %ldms\n", duration_cast<milliseconds>(high_resolution_clock::now() - start).count());
-
-    printf("Output = %s\n", OPENSSL_buf2hexstr(result, outlen));
-
-    char testtext[] = "some plain test "
-                      "text";
-    byte iv[BLOCKSIZE];
-    RAND_bytes(iv, BLOCKSIZE);
-
-    printf("Block size = %d\n", BLOCKSIZE);
+    byte *iv = new byte[IV_SIZE];
+    RAND_bytes(iv, IV_SIZE);
 
     byte *ciphertext;
     size_t ciphertext_size;
-    encrypt_aes256_pcbc((byte *)testtext, strlen(testtext), result, (byte *)iv, ciphertext, ciphertext_size);
 
-    printf("Encrypted (%ld -> %ld) = %s\n", strlen(testtext), ciphertext_size, OPENSSL_buf2hexstr(ciphertext, ciphertext_size));
+    encrypt_aes256_pcbc(file, file_size, key, iv, ciphertext, ciphertext_size);
 
-    byte *plaintext;
-    size_t plaintext_size;
-    decrypt_aes256_pcbc(ciphertext, ciphertext_size, result, iv, plaintext, plaintext_size);
+    // erase key
+    memset(key, 0, KEY_SIZE);
 
-    // since padding is guaranteed to be at least one byte, we write null terminator within ciphertext_size allocated range inside plaintext
-    plaintext[plaintext_size] = 0;
-    printf("Decrypted (%ld -> %ld) = %s\n", ciphertext_size, plaintext_size, plaintext);
-    // fail:
-    //     printf("End: %s", ERR_error_string(ERR_get_error(), NULL));
-    //     EVP_KDF_CTX_free(kctx);
-    //     EVP_KDF_free(kdf);
+#pragma endregion
 
-    // OSSL_set_max_threads(NULL, 0);
+#pragma region Writing to disk
+
+    std::ofstream encrypted_tar;
+    encrypted_tar.open("encrypted.mars", std::ios::binary | std::ios::trunc);
+
+    // << can't be used
+    encrypted_tar.write((char *)salt, SALT_SIZE);
+    encrypted_tar.write((char *)digest, DIGEST_SIZE);
+    encrypted_tar.write((char *)iv, IV_SIZE);
+    encrypted_tar.write((char *)ciphertext, ciphertext_size);
+
+    // vs code doesn't immediately update files in side bar, so it may appear ofstream didn't create the file
+    encrypted_tar.close();
+
+    printf("File written! %zu bytes\n", SALT_SIZE + DIGEST_SIZE + IV_SIZE + ciphertext_size);
+
+#pragma endregion
 
     return 0;
 }

@@ -2,3 +2,7 @@ main
 test-suite
 
 .vscode
+
+*.mars
+*.tar.br
+*.tar.gz

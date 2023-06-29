@@ -11,7 +11,15 @@ Encrypt:
     * Encrypt tar: {enc} = XTS-AES-256(tar, key)
     * Compose resulting mars file: {out} = salt || hash || enc
 
-out_file.mars = `salt || sha3-512(tar) || encrypted_tar`
+out_file.mars = `salt || sha3-512(tar) || encrypted_tar ( = iv || ciphertext )`
+
+v2:
+`salt || encrypted(sha3-512(tar) || tar){ = iv || ciphertext }`
+v2 prevents from searching for file prefix signatures, since it starts with a random hash
+
+folder preparation:
+* `tar -c data` (`tar -x data.tar`)
+* `brotli --best data.tar -o data.tar.br` (`brotli -d`)
 
 Result of my paranoidal distrust to GPG
 
