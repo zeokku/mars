@@ -32,6 +32,7 @@ void kdf(byte *password, byte password_size, byte *salt, byte salt_size, byte *k
         handle_error();
 
     // https://www.rfc-editor.org/rfc/rfc9106.html#name-parameter-choice
+    // @todo 4 lanes, 2 threads
     size_t
         threads = 1,
         lanes = 2,
@@ -42,17 +43,18 @@ void kdf(byte *password, byte password_size, byte *salt, byte salt_size, byte *k
     // first increase memory to max affordable
     // then increase number of iterations
     size_t
-        memcost = MB(64); // GB(1)
+        memcost = GB(3);
     // 1gb 1466ms
     // 2gb 2769ms
     // 3gb 3926ms
     // 4gb 6242ms
 
-    printf("[KDF] Iterations: %zu, memcost: %zu, lanes: %zu\n", iterations, memcost, lanes);
+    // printf("[KDF] Iterations: %zu, memcost: %zu, lanes: %zu\n", iterations, memcost, lanes);
 
     // key = new byte[KEY_SIZE];
 
-    // @todo error, undefined
+    // @todo waiting for bugfix to be merged into master
+    // https://github.com/openssl/openssl/issues/21305
     /* required if threads > 1 */
     // if (OSSL_set_max_threads(NULL, threads) != 1)
     //     handle_error();
@@ -92,12 +94,22 @@ void kdf(byte *password, byte password_size, byte *salt, byte salt_size, byte *k
 
     auto start = high_resolution_clock::now();
 
+    printf("\e[3m"
+           "KDF running"
+           "\e[0m");
+    // force output before starting kdf
+    fflush(stdout);
+
     if (EVP_KDF_derive(ctx, key, KEY_SIZE, params) != 1)
         handle_error();
 
     auto finish = high_resolution_clock::now();
 
-    printf("[KDF] Duration = %ldms\n", duration_cast<milliseconds>(finish - start).count());
+    // @note use \r to overwrite current line
+    printf("\r\e[3m"
+           "KDF duration = %ldms"
+           "\e[0m\n",
+           duration_cast<milliseconds>(finish - start).count());
 
     EVP_KDF_free(kdf);
     EVP_KDF_CTX_free(ctx);

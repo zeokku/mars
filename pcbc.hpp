@@ -160,7 +160,8 @@ void decrypt_aes256_pcbc(const byte *ciphertext, const size_t ciphertext_size, c
     // than ciphertext size (overflow)
     if (padding_size > BLOCK_SIZE)
     {
-        printf("Integrity is broken\n");
+        printf("\e[91m"
+               "Integrity is broken or password is incorrect!\n");
         abort();
     }
 

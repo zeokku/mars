@@ -105,7 +105,11 @@ void encrypt(const std::string filename, const std::string password)
     // vs code doesn't immediately update files in side bar, so it may appear ofstream didn't create the file
     encrypted.close();
 
-    printf("File written! %zu bytes\n", SALT_SIZE + DIGEST_SIZE + IV_SIZE + ciphertext_size);
+    printf("\e[92m"
+           "Folder encrypted successfully! "
+           "\e[33m"
+           "%zu bytes\n",
+           SALT_SIZE + DIGEST_SIZE + IV_SIZE + ciphertext_size);
 
 #pragma endregion
 }
@@ -153,7 +157,8 @@ void decrypt(const std::string filename, const std::string password)
 
     if (!verify(plaintext, plaintext_size, digest))
     {
-        printf("Integrity check failed!\n");
+        printf("\e[91m"
+               "Integrity is broken or password is incorrect!\n");
         abort();
     }
 
@@ -185,7 +190,8 @@ void decrypt(const std::string filename, const std::string password)
 
     std::remove((path).c_str());
 
-    printf("File decrypted!\n");
+    printf("\e[92m"
+           "File decrypted successfully!\n");
 
 #pragma endregion
 }
@@ -195,8 +201,26 @@ int main(int argc, char **argv)
     if (argc != 2)
     {
         printf(
-            "\e[33m\e[3m\e[1m"
+            "\e[33m\e[4m\e[3m\e[1m"
             "Usage:"
+            "\e[0m\n\n"
+
+            "  \e[3m"
+            "Encrypt:"
+            "\e[0m\n"
+
+            "    \e[41m"
+            "mars"
+            "\e[0m"
+            " "
+            "\e[33m"
+            "path/to/folder"
+            "\e[0m\n"
+
+            "\n"
+
+            "  \e[3m"
+            "Decrypt:"
             "\e[0m\n"
 
             "    \e[41m"
@@ -204,14 +228,7 @@ int main(int argc, char **argv)
             "\e[49m \e[36m"
             "encrypted.mars\n"
 
-            "\e[39m\e[3m"
-            "or"
-            "\e[0m\n"
-
-            "    \e[41m"
-            "mars"
-            "\e[49m \e[33m"
-            "path/to/folder\n");
+            "\e[39m\e[3m");
         return 0;
     }
 
