@@ -1,7 +1,15 @@
 #include <openssl/err.h>
 
-void handle_error()
+void print_error(const char *message)
 {
-    printf("Error: %s", ERR_error_string(ERR_get_error(), NULL));
+    printf("\e[91m\e[1m"
+           "Error:\n"
+           "%s\n",
+           message);
+}
+
+void handle_ossl_error()
+{
+    print_error(ERR_error_string(ERR_get_error(), NULL));
     abort();
 }

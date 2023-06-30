@@ -4,6 +4,8 @@
 
 #include <openssl/rand.h>
 
+#include <filesystem>
+
 #include "./types.h"
 
 // @todo configure everything with defines before includes in a config.h
@@ -40,7 +42,7 @@ void encrypt(const std::string filename, const std::string password)
 
 #pragma region Overwrite file and delete it
 
-    std::ofstream of(tar_path);
+    std::ofstream of(tar_path, std::ios::binary);
     for (size_t f = 0; f < file_size; f += 1)
     {
         of.put(0);
@@ -109,11 +111,13 @@ void encrypt(const std::string filename, const std::string password)
     // vs code doesn't immediately update files in side bar, so it may appear ofstream didn't create the file
     encrypted.close();
 
-    printf("\e[92m"
-           "Folder encrypted successfully! "
-           "\e[33m"
-           "%zu bytes\n",
-           SALT_SIZE + DIGEST_SIZE + IV_SIZE + ciphertext_size);
+    printf(
+        "\e[33m\e[3m"
+        "Final size = %zu bytes"
+        "\e[0m\n"
+        "\e[92m"
+        "Data encrypted successfully!\n",
+        SALT_SIZE + IV_SIZE + ciphertext_size);
 
 #pragma endregion
 }
@@ -199,7 +203,7 @@ void decrypt(const std::string filename, const std::string password)
     std::remove((path).c_str());
 
     printf("\e[92m"
-           "File decrypted successfully!\n");
+           "Data decrypted successfully!\n");
 
 #pragma endregion
 }
@@ -240,7 +244,13 @@ int main(int argc, char **argv)
         return 0;
     }
 
-    std::string argument(argv[1]);
+    std::string filename(argv[1]);
+
+    if (!std::filesystem::exists(filename))
+    {
+        print_error(("Path '" + filename + "' does not exist!").c_str());
+        abort();
+    }
 
 #pragma region Password input
     printf("\e[33m\e[3m\e[1m"
@@ -254,12 +264,12 @@ int main(int argc, char **argv)
 
 #pragma endregion
 
-    if (argument.ends_with(ENCRYPTED_EXT))
+    if (filename.ends_with(ENCRYPTED_EXT))
     {
-        decrypt(argument, password);
+        decrypt(filename, password);
     }
     else
     {
-        encrypt(argument, password);
+        encrypt(filename, password);
     }
 }

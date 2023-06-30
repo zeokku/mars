@@ -9,13 +9,19 @@ void hash(const byte *data, const size_t data_size, byte *digest_buffer)
 {
     EVP_MD_CTX *ctx = EVP_MD_CTX_new();
 
-    EVP_DigestInit(ctx, DIGEST_ALG);
+    if (ctx == NULL)
+        handle_ossl_error();
 
-    EVP_DigestUpdate(ctx, data, data_size);
+    if (!EVP_DigestInit(ctx, DIGEST_ALG))
+        handle_ossl_error();
+
+    if (!EVP_DigestUpdate(ctx, data, data_size))
+        handle_ossl_error();
 
     unsigned int digest_size;
 
-    EVP_DigestFinal(ctx, digest_buffer, &digest_size);
+    if (!EVP_DigestFinal(ctx, digest_buffer, &digest_size))
+        handle_ossl_error();
 
     EVP_MD_CTX_free(ctx);
 }

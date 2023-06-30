@@ -24,18 +24,17 @@ void kdf(byte *password, byte password_size, byte *salt, byte salt_size, byte *k
     EVP_KDF *kdf = EVP_KDF_fetch(NULL, "ARGON2D", NULL);
 
     if (kdf == NULL)
-        handle_error();
+        handle_ossl_error();
 
     EVP_KDF_CTX *ctx = EVP_KDF_CTX_new(kdf);
 
     if (ctx == NULL)
-        handle_error();
+        handle_ossl_error();
 
     // https://www.rfc-editor.org/rfc/rfc9106.html#name-parameter-choice
-    // @todo 4 lanes, 2 threads
     size_t
-        threads = 1,
-        lanes = 2,
+        threads = 2,
+        lanes = 4,
         iterations = 1;
 
     // https://www.openssl.org/docs/manmaster/man7/EVP_KDF-ARGON2.html#:~:text=%22memcost%22%20(-,OSSL_KDF_PARAM_ARGON2_MEMCOST,-)%20%3Cunsigned%20integer%3E
@@ -51,13 +50,10 @@ void kdf(byte *password, byte password_size, byte *salt, byte salt_size, byte *k
 
     // printf("[KDF] Iterations: %zu, memcost: %zu, lanes: %zu\n", iterations, memcost, lanes);
 
-    // key = new byte[KEY_SIZE];
-
-    // @todo waiting for bugfix to be merged into master
     // https://github.com/openssl/openssl/issues/21305
     /* required if threads > 1 */
-    // if (OSSL_set_max_threads(NULL, threads) != 1)
-    //     handle_error();
+    if (!OSSL_set_max_threads(NULL, threads))
+        handle_ossl_error();
 
     // @note @bug this caused stack smashing error!!!
     // i had 6 params instaed of 7
@@ -100,17 +96,19 @@ void kdf(byte *password, byte password_size, byte *salt, byte salt_size, byte *k
     // force output before starting kdf
     fflush(stdout);
 
-    if (EVP_KDF_derive(ctx, key, KEY_SIZE, params) != 1)
-        handle_error();
+    if (!EVP_KDF_derive(ctx, key, KEY_SIZE, params))
+        handle_ossl_error();
 
     auto finish = high_resolution_clock::now();
 
     // @note use \r to overwrite current line
     printf("\r\e[3m"
-           "KDF duration = %ldms"
+           "KDF duration = %ld ms"
            "\e[0m\n",
            duration_cast<milliseconds>(finish - start).count());
 
     EVP_KDF_free(kdf);
     EVP_KDF_CTX_free(ctx);
+
+    // OSSL_set_max_threads(NULL, 0);
 }

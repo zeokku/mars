@@ -34,12 +34,13 @@ void pcbc_encrypt_round(EVP_CIPHER_CTX *ctx, const byte *in, byte *out, byte *op
         (size_t *)op);
 
     // encrypt
-    EVP_EncryptUpdate(
-        ctx,
-        out,
-        &encrypted_size,
-        op,
-        BLOCK_SIZE);
+    if (!EVP_EncryptUpdate(
+            ctx,
+            out,
+            &encrypted_size,
+            op,
+            BLOCK_SIZE))
+        handle_ossl_error();
 
     // prepare next operation = plaintext ^ ciphertext
     xor_block(
@@ -66,10 +67,15 @@ void encrypt_aes256_pcbc(const byte *plaintext, const size_t plaintext_size, con
 
     EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
 
-    EVP_EncryptInit(ctx, ECB_CIPHER, key, NULL);
+    if (ctx == NULL)
+        handle_ossl_error();
+
+    if (!EVP_EncryptInit(ctx, ECB_CIPHER, key, NULL))
+        handle_ossl_error();
 
     // @note !!! it's required to disable padding
-    EVP_CIPHER_CTX_set_padding(ctx, 0);
+    if (!EVP_CIPHER_CTX_set_padding(ctx, 0))
+        handle_ossl_error();
 
     // encrypt full blocks
     for (size_t b = 0; b + BLOCK_SIZE <= plaintext_size; b += BLOCK_SIZE)
@@ -113,7 +119,8 @@ void pcbc_decrypt_round(EVP_CIPHER_CTX *ctx, const byte *in, byte *out, byte *op
 {
     int decrypted_size;
 
-    EVP_DecryptUpdate(ctx, out, &decrypted_size, in, BLOCK_SIZE);
+    if (!EVP_DecryptUpdate(ctx, out, &decrypted_size, in, BLOCK_SIZE))
+        handle_ossl_error();
 
     // plaintext = decrypted ^ op (= iv OR prev_ciphertext ^ prev_plaintext)
     xor_block(
@@ -140,9 +147,14 @@ void decrypt_aes256_pcbc(const byte *ciphertext, const size_t ciphertext_size, c
 
     EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
 
-    EVP_DecryptInit(ctx, ECB_CIPHER, key, NULL);
+    if (ctx == NULL)
+        handle_ossl_error();
 
-    EVP_CIPHER_CTX_set_padding(ctx, 0);
+    if (!EVP_DecryptInit(ctx, ECB_CIPHER, key, NULL))
+        handle_ossl_error();
+
+    if (!EVP_CIPHER_CTX_set_padding(ctx, 0))
+        handle_ossl_error();
 
     for (size_t b = 0; b < ciphertext_size; b += BLOCK_SIZE)
     {
@@ -160,8 +172,7 @@ void decrypt_aes256_pcbc(const byte *ciphertext, const size_t ciphertext_size, c
     // than ciphertext size (overflow)
     if (padding_size > BLOCK_SIZE)
     {
-        printf("\e[91m"
-               "Integrity is broken or password is incorrect!\n");
+        print_error("Integrity is broken or password is incorrect!");
         abort();
     }
 
