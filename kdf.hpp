@@ -5,6 +5,8 @@
 #include <openssl/kdf.h> /* EVP_KDF_*            */
 #include <openssl/evp.h>
 
+#include <cmath>
+
 #include "./types.h"
 #include "./error.hpp"
 
@@ -16,8 +18,9 @@
 #include <chrono>
 using namespace std::chrono;
 
-#define MB(x) 1024ull * x
-#define GB(x) MB(1024ull) * x
+// @note multiply by double to allow fractional units
+#define MiB(x) 1024. * x
+#define GiB(x) MiB(1024) * x
 
 void kdf(byte *password, byte password_size, byte *salt, byte salt_size, byte *key)
 {
@@ -33,22 +36,75 @@ void kdf(byte *password, byte password_size, byte *salt, byte salt_size, byte *k
 
     // https://www.rfc-editor.org/rfc/rfc9106.html#name-parameter-choice
     size_t
-        threads = 2,
         lanes = 4,
-        iterations = 1;
+        threads = 2,
+        iterations = 3;
 
     // https://www.openssl.org/docs/manmaster/man7/EVP_KDF-ARGON2.html#:~:text=%22memcost%22%20(-,OSSL_KDF_PARAM_ARGON2_MEMCOST,-)%20%3Cunsigned%20integer%3E
     // mem cost is 1k blocks
     // first increase memory to max affordable
     // then increase number of iterations
     size_t
-        memcost = GB(3);
+        memcost = GiB(4);
+
     // 1gb 1466ms
     // 2gb 2769ms
     // 3gb 3926ms
     // 4gb 6242ms
 
-    // printf("[KDF] Iterations: %zu, memcost: %zu, lanes: %zu\n", iterations, memcost, lanes);
+#pragma region @todo config tweak
+    // @todo store values in .mars file
+    // utilize struct
+
+    // printf("\e[33m\e[3m\e[1m"
+    //        "Do you want to tweak KDF parameters? "
+    //        "(y/"
+    //        "\e[4m"
+    //        "N"
+    //        "\e[0m"
+    //        "\e[33m\e[3m\e[1m"
+    //        "):\e[0m ");
+
+    // std::string input;
+    // getline(std::cin, input);
+
+    // if (input == "y" || input == "yes")
+    // {
+    //     printf("\e[96m"
+    //            "Mem cost (GiB):"
+    //            "\e[0m ");
+    //     getline(std::cin, input);
+
+    //     memcost = GiB(std::stod(input));
+
+    //     ///
+
+    //     printf("\e[96m"
+    //            "Lanes:"
+    //            "\e[0m ");
+    //     getline(std::cin, input);
+
+    //     lanes = std::stoul(input);
+
+    //     threads = std::ceil(lanes / 2.);
+
+    //     ///
+
+    //     printf("\e[96m"
+    //            "Iterations:"
+    //            "\e[0m ");
+    //     getline(std::cin, input);
+
+    //     iterations = std::stoul(input);
+    // }
+#pragma endregion
+
+    printf(
+        "\e[95m[KDF config]\e[0m\n"
+        "\e[3m"
+        "Iterations: %zu, memcost: %zu, lanes: %zu, threads: %zu"
+        "\e[0m\n",
+        iterations, memcost, lanes, threads);
 
     // https://github.com/openssl/openssl/issues/21305
     /* required if threads > 1 */
@@ -91,7 +147,7 @@ void kdf(byte *password, byte password_size, byte *salt, byte salt_size, byte *k
     auto start = high_resolution_clock::now();
 
     printf("\e[3m"
-           "KDF running"
+           "KDF is running..."
            "\e[0m");
     // force output before starting kdf
     fflush(stdout);

@@ -212,8 +212,9 @@ int main(int argc, char **argv)
 {
     if (argc != 2)
     {
+        // 4 - underline
         printf(
-            "\e[33m\e[4m\e[3m\e[1m"
+            "\e[43m\e[3m\e[1m"
             "Usage:"
             "\e[0m\n\n"
 
