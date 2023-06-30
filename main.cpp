@@ -248,7 +248,7 @@ int main(int argc, char **argv)
 
     if (!std::filesystem::exists(filename))
     {
-        print_error(("Path '" + filename + "' does not exist!").c_str());
+        print_error(("Path \"" + filename + "\" does not exist!").c_str());
         abort();
     }
 

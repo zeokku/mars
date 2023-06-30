@@ -2,8 +2,10 @@
 
 void print_error(const char *message)
 {
-    printf("\e[91m\e[1m"
-           "Error:\n"
+    printf("\e[41m\e[1m"
+           "Error:"
+           "\e[49m\n"
+           "\e[91m"
            "%s\n",
            message);
 }
