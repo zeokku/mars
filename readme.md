@@ -25,7 +25,7 @@ Because it can't be parallelized, so to gain access to the full data, you have t
 Because decryption routine is essentially doing multiple rounds of cipher encryption of IV and any changes in cipher text won't propagate to the following blocks, which opens theoretical possibilities for data tampering to compromise sensitive data. While in PCBC every bit changes everything that follows.
 
 #### Integrity check
-I used SHA3-512 (to fit the 256 bit crypto strength) for integrity check. The hash of the unencrypted `.tar.br` is encrypted along with the archive's content in place of prefix: `encrypt(digest || archive)`. This scheme prevents any possible brute-force attempts to uncover the key based on guessing plaintext from first blocks. 512 bits of the digest occupy 4 full blocks, adding SHA3 random output, it's impossible to make anything out of it, comparing to concatenating unecrypted hash to the encrypted archive: `digest || encrypt(archive)`, like I did initially.
+I used SHA3-512 (to fit the 256 bit crypto strength) for integrity check. The hash of the unencrypted `.tar.br` is encrypted along with the archive's content in place of prefix: `encrypt(digest || archive)`. This scheme prevents any possible brute-force attempts to uncover the key based on guessing plaintext from first blocks. 512 bits of the digest occupy 4 full blocks, adding SHA3 random output, it's impossible to make anything out of it, comparing to concatenating unencrypted hash to the encrypted archive: `digest || encrypt(archive)`, like I did initially.
 
 #### Files zeroing
 Temporary files with sensitive data are being overwritten with zeroes, to prevent possible physical analysis of the drives.
